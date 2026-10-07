@@ -1,0 +1,6 @@
+{
+  "name": "claude-worktree-hub",
+  "skills": [
+    "./worktree-hub"
+  ]
+}

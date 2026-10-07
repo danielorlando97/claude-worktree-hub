@@ -1,0 +1,24 @@
+{
+  "name": "claude-worktree-hub",
+  "version": "1.0.0",
+  "description": "Scaffold or convert a git repo into a worktree hub: main checkout, parallel worktrees, helper scripts and agent skills to create and close them.",
+  "keywords": ["claude", "claude-code", "skill", "git", "worktree", "agents", "parallel-development"],
+  "homepage": "https://github.com/danielorlando97/claude-worktree-hub#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielorlando97/claude-worktree-hub.git"
+  },
+  "license": "MIT",
+  "author": "danielorlando97",
+  "bin": {
+    "claude-worktree-hub": "./install.js"
+  },
+  "files": [
+    "worktree-hub/",
+    ".claude-plugin/",
+    "install.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

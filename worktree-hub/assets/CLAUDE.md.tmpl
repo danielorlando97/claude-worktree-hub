@@ -1,0 +1,12 @@
+# Hub — Claude Code instructions
+
+This is a **worktree hub** for `{{REPO}}`, not a single checkout. Read [`AGENTS.md`](AGENTS.md) first; it is the source of truth for worktree rules and commands. Application code and Git/PR standards live in `{{REPO}}/AGENTS.md` and `{{REPO}}/CLAUDE.md` when present.
+
+## Non-negotiable
+
+- **Worktrees:** create them only with `./scripts/wt-add.sh -b <branch> {{REMOTE}}/{{BASE_BRANCH}}` (skill `create-worktree`); close them with skill `close-worktree`. Never `git worktree add` by hand. Confirm which worktree owns a branch before editing.
+- **Shared config:** `.env` / `*.env` are hard links to `{{REPO}}/`. Never write per-instance values into them.
+
+## Skills
+
+Project skills live in `.claude/skills/`: `create-worktree`, `close-worktree`. App-level skills, if any, are inside `{{REPO}}/`.

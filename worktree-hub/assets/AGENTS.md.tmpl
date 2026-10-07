@@ -1,0 +1,80 @@
+# Hub — Git worktrees
+
+This workspace is a **worktree hub** for `{{REPO}}`, not a single checkout.
+
+```text
+hub/                            ← workspace root (open this in the IDE)
+├── AGENTS.md                   ← this file
+├── {{REPO}}/                   ← main checkout (source of truth for local config)
+├── worktrees/                  ← extra worktrees only (never the main clone elsewhere)
+├── scripts/
+│   ├── hub.conf                ← repo name, base branch, linked files
+│   ├── wt-lib.sh               ← shared helpers (sourced)
+│   ├── wt-add.sh  wt-close.sh  wt-remove.sh
+│   └── wt-status.sh  wt-pr-status.sh  wt-link-env.sh
+└── .claude/skills/             ← create-worktree, close-worktree
+```
+
+For application code, architecture and Git/PR standards, read `{{REPO}}/AGENTS.md` and `{{REPO}}/CLAUDE.md` if they exist.
+
+## Rules for agents
+
+1. **Do not** run `git worktree add` with custom paths. Always use `scripts/wt-add.sh` so checkouts land under `worktrees/`.
+2. **New worktree = new branch off `{{BASE_BRANCH}}`.** Use `wt-add.sh -b <branch> {{REMOTE}}/{{BASE_BRANCH}}`. Do not attach a worktree to an existing branch unless the user explicitly asks to resume it or names another base ref.
+3. **Do not** remove or repoint the main checkout `{{REPO}}/` (`wt-remove.sh` and `wt-close.sh` refuse).
+4. Before editing, confirm **which worktree** owns the branch (`git -C <path> status -sb` or `scripts/wt-status.sh`).
+5. To see all branches and local changes across checkouts, run `scripts/wt-status.sh`.
+6. Run Git commands from the worktree that has the branch checked out, not from a random path.
+7. **Local config is shared via hard links (no copies).** `.env` / `*.env` (and the files listed in `EXTRA_LINK_NAMES` in `scripts/hub.conf`) are hard-linked from `{{REPO}}/` into each worktree. Never write per-instance values into them. Re-run `wt-link-env.sh --all` after adding new env files. Limits: same filesystem only, and an editor that saves by replacing the file un-links that worktree's copy (`wt-link-env.sh --force <folder>` restores it).
+
+Script paths assume the hub root; the scripts work from any cwd.
+
+## Branch name ↔ worktree folder
+
+Branch → folder: replace every `/` with `-` (`printf '%s' "$branch" | tr '/' '-'`).
+
+| Git branch | Worktree path |
+|------------|---------------|
+| `feat/core-ops` | `worktrees/feat-core-ops` |
+| `fix/api/page-search` | `worktrees/fix-api-page-search` |
+
+Folder → branch has no reverse mapping: use `git -C worktrees/<folder> branch --show-current`. Do not guess by turning `-` back into `/`.
+
+`wt-remove.sh` and `wt-close.sh` accept either the branch name or the folder.
+
+## Commands
+
+```bash
+./scripts/wt-add.sh -b feat/my-feature {{REMOTE}}/{{BASE_BRANCH}}   # default: new branch off base
+./scripts/wt-add.sh -b fix/hotfix {{REMOTE}}/release/2026xxxx      # exception: other base, only if asked
+./scripts/wt-add.sh feat/already-on-remote                         # exception: resume existing branch, only if asked
+
+./scripts/wt-status.sh                                             # every checkout + local changes
+./scripts/wt-link-env.sh [--force] <folder> | --all                # (re)link shared config
+
+./scripts/wt-pr-status.sh <folder>                                 # PR URL, or exit 2 = work without PR
+./scripts/wt-close.sh <folder> [--force] [--delete-branch] [--skip-pr]
+./scripts/wt-remove.sh <folder>                                    # low level, no PR check
+```
+
+`wt-close.sh` requires an open PR when the branch has commits vs `{{BASE_BRANCH}}` (override with `WT_PR_BASE`). Exit 2 = work without a PR; exit 3 = PR state cannot be verified (no `gh`): check by hand, then `--skip-pr`. Prefer the `close-worktree` skill.
+
+## Typical flows
+
+```bash
+# start a task
+./scripts/wt-add.sh -b feat/short-description {{REMOTE}}/{{BASE_BRANCH}}
+cd worktrees/feat-short-description   # edit and commit here
+
+# parallel tasks
+./scripts/wt-add.sh -b feat/task-a {{REMOTE}}/{{BASE_BRANCH}}
+./scripts/wt-add.sh -b feat/task-b {{REMOTE}}/{{BASE_BRANCH}}
+./scripts/wt-status.sh
+```
+
+## Main repo vs worktrees
+
+| Location | Role |
+|----------|------|
+| `{{REPO}}/` | Main checkout; **source of truth for `.env` / `*.env`** |
+| `worktrees/*` | Additional branches; config hard-linked to the same inode as `{{REPO}}/` |
